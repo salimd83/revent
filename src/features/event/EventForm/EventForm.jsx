@@ -1,34 +1,38 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
+import cuid from 'cuid'
 import { Form, Segment, Button } from 'semantic-ui-react';
+import {createEvent, updateEvent} from '../eventActions'
 
-const emptyEvent = {
-  title: '',
-  city: '',
-  date: '',
-  venue: '',
-  hostedBy: ''
+const mapState = (state, ownProps) => {
+  const eventId = ownProps.match.params.id;
+
+  let event = {
+    title: '',
+    city: '',
+    date: '',
+    venue: '',
+    hostedBy: ''
+  };
+
+  if (eventId && state.events.length > 0) {
+    event = state.events.filter(event => event.id === eventId)[0];
+  }
+
+  return {
+    event
+  };
 };
+
+const actions = {
+  createEvent,
+  updateEvent
+}
 
 class EventForm extends Component {
   state = {
-    event: emptyEvent
+    event: Object.assign({}, this.props.event)
   };
-
-  componentDidMount() {
-    if (this.props.selectedEvent !== null) {
-      this.setState({
-        event: this.props.selectedEvent
-      });
-    }
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.selectedEvent !== this.props.selectedEvent) {
-      this.setState({
-        event: nextProps.selectedEvent || emptyEvent
-      });
-    }
-  }
 
   onInputChange = e => {
     const newEvent = this.state.event;
@@ -42,8 +46,15 @@ class EventForm extends Component {
     e.preventDefault();
     if (this.state.event.id) {
       this.props.updateEvent(this.state.event);
+      this.props.history.goBack()
     } else {
-      this.props.createEvent(this.state.event);
+      const newEvent = {
+        ...this.state.event,
+        id: cuid(),
+        hostPhotoURL: '/assets/user.png'
+      }
+      this.props.createEvent(newEvent);
+      this.props.history.push('/events')
     }
   };
 
@@ -55,11 +66,22 @@ class EventForm extends Component {
         <Form onSubmit={this.onSubmit}>
           <Form.Field>
             <label>Event Title</label>
-            <input name="title" value={event.title} onChange={this.onInputChange} placeholder="First Name" />
+            <input
+              name="title"
+              value={event.title}
+              onChange={this.onInputChange}
+              placeholder="First Name"
+            />
           </Form.Field>
           <Form.Field>
             <label>Event Date</label>
-            <input name="date" value={event.date} onChange={this.onInputChange} type="date" placeholder="Event Date" />
+            <input
+              name="date"
+              value={event.date}
+              onChange={this.onInputChange}
+              type="date"
+              placeholder="Event Date"
+            />
           </Form.Field>
           <Form.Field>
             <label>City</label>
@@ -91,7 +113,7 @@ class EventForm extends Component {
           <Button positive type="submit">
             Submit
           </Button>
-          <Button onClick={handleCancel} type="button">
+          <Button onClick={this.props.history.goBack} type="button">
             Cancel
           </Button>
         </Form>
@@ -100,4 +122,4 @@ class EventForm extends Component {
   }
 }
 
-export default EventForm;
+export default connect(mapState, actions)(EventForm);
