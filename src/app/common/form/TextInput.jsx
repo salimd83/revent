@@ -9,7 +9,7 @@ const TextInput = ({ input, width, type, placeholder, meta: { touched, error } }
         error && (
           <Label basic color="red">
             {error}
-          </Label>
+          </Label>  
         )}
     </Form.Field>
   );
