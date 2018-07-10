@@ -8,7 +8,6 @@ export const createEvent = (state, payload) => {
 };
 
 export const updateEvent = (state, payload) => {
-  console.log(payload);
   return [
     ...state.filter(event => event.id !== payload.event.id),
     Object.assign({}, payload.event)
