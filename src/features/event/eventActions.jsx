@@ -1,7 +1,10 @@
-import { toastr } from 'react-redux-toastr';
-import { CREATE_EVENT, DELETE_EVENT, UPDATE_EVENT, FETCH_EVENTS } from './eventConstants';
-import { asyncActionsError, asyncActionsStart, asyncActionsFinish } from '../async/asyncActions';
-import { fetchSampleData } from '../../app/data/mochApi';
+import { toastr } from "react-redux-toastr";
+import { DELETE_EVENT, FETCH_EVENTS } from "./eventConstants";
+import { asyncActionsError, asyncActionsStart, asyncActionsFinish } from "../async/asyncActions";
+import { fetchSampleData } from "../../app/data/mochApi";
+import { getFirestore } from "redux-firestore";
+import { createNewEvent } from "../../app/common/util/helpers";
+import moment from "moment";
 
 export const fetchEvents = events => {
   return {
@@ -11,31 +14,59 @@ export const fetchEvents = events => {
 };
 
 export const createEvent = event => {
-  return async dispatch => {
+  return async (dispatch, getState, { getFirerstore }) => {
+    const firestore = getFirestore();
+    const user = firestore.auth().currentUser;
+    const photoURL = getState().firebase.profile.photoURL;
+    let newEvent = createNewEvent(user, photoURL, event);
     try {
-      dispatch({
-        type: CREATE_EVENT,
-        payload: { event }
+      let createdEvent = await firestore.add("Events", newEvent);
+      await firestore.set(`event_attendee/${createEvent.id}_${user.uid}`, {
+        eventid: createdEvent.id,
+        userUid: user.uid,
+        eventDate: event.date,
+        host: true
       });
-      toastr.success('Success!', 'Event has been created');
+      toastr.success("Success!", "Event has been created");
     } catch (error) {
-      toastr.error('Oops', 'Something went wrong');
+      toastr.error("Oops", "Something went wrong");
     }
   };
 };
 
 export const updateEvent = event => {
-  return async dispatch => {
+  return async (dispatch, getState, { getFirestore }) => {
+    const firestore = getFirestore();
+    if (event.date !== getState().firestore.ordered.Events[0].date)
+      event.date = moment(event.date).toDate();
     try {
-      dispatch({
-        type: UPDATE_EVENT,
-        payload: { event }
-      });
-      toastr.success('Success!', 'Event has been updated');
+      await firestore.update(`Events/${event.id}`, event);
+      toastr.success("Success!", "Event has been updated");
     } catch (error) {
-      toastr.error('Oops', 'Something went wrong');
+      toastr.error("Oops", "Something went wrong");
     }
   };
+};
+
+export const cancelToggle = (cancelled, eventId) => async (
+  dispatch,
+  getState,
+  { getFirestore }
+) => {
+  const firestore = getFirestore();
+  const message = cancelled
+    ? "Are you sure you want to cancel the event?"
+    : "This will reactivate the event - are you sure?";
+  try {
+    toastr.confirm(message, {
+      onOk: () =>
+        firestore.update(`Events/${eventId}`, {
+          cancelled: cancelled
+        })
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const deleteEvent = eventId => {
